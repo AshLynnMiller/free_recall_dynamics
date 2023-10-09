@@ -114,7 +114,7 @@ PFR is simply the number of times the first word recalled comes from a given ser
 
 Note, `subtrial` is simply output position. However, this variable was added manually by the person who coded the data, meaning it could be prone to errors. When tidying the data, I will create a new variable, `output_position`, to replace the existing `subtrial` variable.
 
-## Step 1: Create variables that indicate when a change in list occurred (i.e, when a mismatch occurs between list and lag_list)
+## Firset we need to create variables that indicate when a change in list occurred (i.e, when a mismatch occurs between list and lag_list)
 
 ```{r}
 recall_data %<>%
@@ -136,10 +136,9 @@ recall_data %<>%
   mutate(subtrial2 = replace_na(subtrial2, 0))
 ```
 
-## Step 2: Now that we know when each new list began, we can count the number of words outputted within each list
+## Now that we know when each new list began, we can count the number of words outputted within each list
 
 ```{r}
-
 recall_data %<>%
   group_by(subject, list) %>%
   mutate(
@@ -150,7 +149,7 @@ recall_data %<>%
         output_position = 
         # Propagate the starting value and add the counter
         zoo::na.locf(output_position, 
-                     na.rm=FALSE) + 
+                     na.rm = FALSE) + 
                      row_number() - match(output_position, output_position),
     output_position = ifelse(subtrial2 == 1,
                              output_position - 1, output_position)) %>%
@@ -230,7 +229,6 @@ PFR_agg <- PFR %>%
 
 #removing widest form of the data
 rm(PFR)
-
 ```
 
 ## Let's graph the data to make it sure looks right
