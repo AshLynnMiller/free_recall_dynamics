@@ -31,7 +31,8 @@ library(rio)
 library(here)
 library(magrittr)
 #library(lmerTest)
-library(sundry)
+#devtools::install_github("datalorax/sundry")
+library(sundry) #contains nice function for computing standard errors
 library(knitr)
 library(kableExtra)
 library(zoo)
@@ -116,7 +117,6 @@ Note, `subtrial` is simply output position. However, this variable was added man
 ## Step 1: Create variables that indicate when a change in list occurred (i.e, when a mismatch occurs between list and lag_list)
 
 ```{r}
-
 recall_data %<>%
   mutate(list_lag = lag(list)) %>%
   select(subject, list, list_lag, subtrial, serpos, acc, error_type,
@@ -232,6 +232,8 @@ PFR_agg <- PFR %>%
 rm(PFR)
 
 ```
+
+## Let's graph the data to make it sure looks right
 
 ```{r}
 PFR_agg %>%
