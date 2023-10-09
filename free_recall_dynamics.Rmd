@@ -16,8 +16,8 @@ output:
 knitr::opts_chunk$set(echo = TRUE,
                       message = FALSE,
                       warning = FALSE,
-                      fig.width = 6,
-                      fig.height = 4,
+                      fig.width = 7,
+                      fig.height = 5,
                       fig.align = "center")
 
 # disable scientific notation
@@ -48,7 +48,9 @@ fonts()
 loadfonts(device = "all")
 ```
 
-```{r}
+```{r include=FALSE}
+
+# Load personal theme for plots
 ashTheme <- theme(axis.title.y = element_text(size = 12.85,
                                               family = ".SF NS Rounded",
                                               face = "bold"),
@@ -80,7 +82,7 @@ ashTheme <- theme(axis.title.y = element_text(size = 12.85,
                                              family = ".SF NS Rounded"))
 ```
 
-## Load data
+### Load data
 
 ```{r load_raw_data}
 recall_data <- import(here::here("data",
@@ -90,15 +92,18 @@ recall_data <- import(here::here("data",
   dplyr::rename("error_type" = "err_pliel_ior_r")
 ```
 
-Take a quick look at the data (for html view).
+### Take a quick look at the data (for html view)
 
 Data file is currently in long format:
-  + Total number of rows 978
-    + Total number of participants: 33 (this is a subset of a larger dataset)
-    + Total number word lists: 5
-    + Total number of words per list: 10 (so serpos ranges from 1-10)
+
+- Total number of rows 978
+- Total number of participants: 33 (this is a subset of a larger dataset)
+- Total number word lists: 5
+- Total number of words per list: 10 (so serpos ranges from 1-10)
 
 ```{r}
+# there is no need to run this if you are rerunning code in the .Rmd file
+# I'm just making it easy to view data in html output
 recall_data %>%
   kbl() %>%
   kable_styling(bootstrap_options = c("condensed", "responsive"),
@@ -108,13 +113,14 @@ recall_data %>%
   scroll_box(width = "100%", height = "225px")
 ```
 
-# Tidy and clean data to compute `probability of first recall (PFR)`
+### Tidy and clean data to compute `probability of first recall (PFR)`
 
 PFR is simply the number of times the first word recalled comes from a given serial position divided by the number of times the first recalled word could have come from that serial position.
 
 Note, `subtrial` is simply output position. However, this variable was added manually by the person who coded the data, meaning it could be prone to errors. When tidying the data, I will create a new variable, `output_position`, to replace the existing `subtrial` variable.
 
-## Firset we need to create variables that indicate when a change in list occurred (i.e, when a mismatch occurs between list and lag_list)
+
+#### First we need to create variables that indicate when a change in list occurred (i.e, when a mismatch occurs between list and lag_list)
 
 ```{r}
 recall_data %<>%
@@ -125,7 +131,21 @@ recall_data %<>%
 # replace missing value in first row with 0
 recall_data %<>%
   mutate(list_lag = replace_na(list_lag, 0))
+```
 
+```{r}
+# there is no need to run this if you are rerunning code in the .Rmd file
+# I'm just making it easy to view data in html output
+recall_data %>%
+  kbl() %>%
+  kable_styling(bootstrap_options = c("condensed", "responsive"),
+                full_width = F) %>%
+  column_spec(1, bold = T, border_right = T) %>%
+  column_spec(2, width = "40em") %>%
+  scroll_box(width = "100%", height = "225px")
+```
+
+```{r}
 recall_data %<>%
   mutate(subtrial2 = case_when((list != list_lag) ~ 1)) %>%
   select(subject, list, list_lag, subtrial2, subtrial, serpos, acc, error_type,
@@ -136,7 +156,19 @@ recall_data %<>%
   mutate(subtrial2 = replace_na(subtrial2, 0))
 ```
 
-## Now that we know when each new list began, we can count the number of words outputted within each list
+```{r}
+# there is no need to run this if you are rerunning code in the .Rmd file
+# I'm just making it easy to view data in html output
+recall_data %>%
+  kbl() %>%
+  kable_styling(bootstrap_options = c("condensed", "responsive"),
+                full_width = F) %>%
+  column_spec(1, bold = T, border_right = T) %>%
+  column_spec(2, width = "40em") %>%
+  scroll_box(width = "100%", height = "225px")
+```
+
+#### Now that we know when each new list began, we can count the number of words outputted within each list
 
 ```{r}
 recall_data %<>%
@@ -167,7 +199,19 @@ recall_data %<>%
          -subtrial)
 ```
 
-# If you want data in wide format (aggregated across lists), you will need to do the following:
+```{r}
+# there is no need to run this if you are rerunning code in the .Rmd file
+# I'm just making it easy to view data in html output
+recall_data %>%
+  kbl() %>%
+  kable_styling(bootstrap_options = c("condensed", "responsive"),
+                full_width = F) %>%
+  column_spec(1, bold = T, border_right = T) %>%
+  column_spec(2, width = "40em") %>%
+  scroll_box(width = "100%", height = "225px")
+```
+
+#### If you want data in wide format (aggregated across lists), you will need to do the following:
 
 ```{r}
 recall_data %<>%
@@ -210,6 +254,7 @@ PFR <- recall_data %>%
 
 # this is the format  your data needs to be in to run analyses in SPSS
 PFR %<>%
+  # dividing by 5 because there were 5 total lists, meaning each serpos (1-10) could only be recalled the first 5 times at the most
   mutate(SP1_PFR = PFR_SP1_sum/5,
          SP2_PFR = PFR_SP2_sum/5,
          SP3_PFR = PFR_SP3_sum/5,
@@ -231,7 +276,19 @@ PFR_agg <- PFR %>%
 rm(PFR)
 ```
 
-## Let's graph the data to make it sure looks right
+```{r}
+# there is no need to run this if you are rerunning code in the .Rmd file
+# I'm just making it easy to view data in html output
+PFR_agg %>%
+  kbl() %>%
+  kable_styling(bootstrap_options = c("condensed", "responsive"),
+                full_width = F) %>%
+  column_spec(1, bold = T, border_right = T) %>%
+  column_spec(2, width = "40em") %>%
+  scroll_box(width = "100%", height = "225px")
+```
+
+#### Let's graph the data to make it sure looks right
 
 ```{r}
 PFR_agg %>%
@@ -245,7 +302,7 @@ PFR_agg %>%
                   ymax = mean_PFR + se_PFR),
               fill = "#DE3163",
               alpha = 0.7) +
-  theme_bw(base_size = 12) +
+  theme_bw(base_size = 14) +
   labs(y = "Probability of First Recall",
        x = "\nSerial Position") +
   scale_x_continuous(breaks = c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10),
@@ -256,5 +313,184 @@ PFR_agg %>%
                                 ".40", ".50", ".60"),
                      limits = c(.00, NA)) +
   ashTheme
+```
+
+### Tidy and clean data to compute `IRTs` and `recall latency`
+
+```{r}
+recall_data %<>%
+  mutate(start = case_when((output_position == 1) ~ recall_onset_time)) %>%
+  fill(start) # Fill NA's with the preceding non-NA values
+
+recall_data %<>%
+  dplyr::rename("rt_time" = "recall_rt_time")
+
+recall_data %<>%
+  select(subject:rt_time, start, PFR_SP1:PFR_SP10)
+```
+
+```{r}
+# there is no need to run this if you are rerunning code in the .Rmd file
+# I'm just making it easy to view data in html output
+recall_data %>%
+  kbl() %>%
+  kable_styling(bootstrap_options = c("condensed", "responsive"),
+                full_width = F) %>%
+  column_spec(1, bold = T, border_right = T) %>%
+  column_spec(2, width = "40em") %>%
+  scroll_box(width = "100%", height = "225px")
+```
+
+```{r}
+# in terms of the number of items output to include, most ss (99.3%) in the present dataset enter 15 or fewer responses per list (this is the value typically used for Nash). But in the present dataset,  there are a few instances in which a participant entered up to 20 responses… there is even someone who entered up to 25 responses in a single list (when there was only 10 TBR items shown per list)...
+
+recall_data %<>%
+  mutate(rt = case_when((output_position == 1 & rt_time > 0) ~ rt_time - start,
+                        (output_position == 2 & rt_time > 0) ~ rt_time - start,
+                        (output_position == 3 & rt_time > 0) ~ rt_time - start,
+                        (output_position == 4 & rt_time > 0) ~ rt_time - start,
+                        (output_position == 5 & rt_time > 0) ~ rt_time - start,
+                        (output_position == 6 & rt_time > 0) ~ rt_time - start,
+                        (output_position == 7 & rt_time > 0) ~ rt_time - start,
+                        (output_position == 8 & rt_time > 0) ~ rt_time - start,
+                        (output_position == 9 & rt_time > 0) ~ rt_time - start,
+                        (output_position == 10 & rt_time > 0) ~ rt_time - start,
+                        (output_position == 11 & rt_time > 0) ~ rt_time - start,
+                        (output_position == 12 & rt_time > 0) ~ rt_time - start,
+                        (output_position == 13 & rt_time > 0) ~ rt_time - start,
+                        (output_position == 14 & rt_time > 0) ~ rt_time - start,
+                        (output_position == 15 & rt_time > 0) ~ rt_time - start,
+                        (output_position == 16 & rt_time > 0) ~ rt_time - start,
+                        (output_position == 17 & rt_time > 0) ~ rt_time - start,
+                        (output_position == 18 & rt_time > 0) ~ rt_time - start,
+                        (output_position == 19 & rt_time > 0) ~ rt_time - start,
+                        (output_position == 20 & rt_time > 0) ~ rt_time - start,
+                        (output_position == 21 & rt_time > 0) ~ rt_time - start,
+                        (output_position == 22 & rt_time > 0) ~ rt_time - start,
+                        (output_position == 23 & rt_time > 0) ~ rt_time - start,
+                        (output_position == 24 & rt_time > 0) ~ rt_time - start,
+                        (output_position == 25 & rt_time > 0) ~ rt_time - start))
+
+recall_data %<>%
+  select(subject:rt_time, start, rt, PFR_SP1:PFR_SP10)
+
+# latency to the first response is merely rt when output position = 1
+# mean recall latency is mean rt
+```
+
+```{r}
+# there is no need to run this if you are rerunning code in the .Rmd file
+# I'm just making it easy to view data in html output
+recall_data %>%
+  kbl() %>%
+  kable_styling(bootstrap_options = c("condensed", "responsive"),
+                full_width = F) %>%
+  column_spec(1, bold = T, border_right = T) %>%
+  column_spec(2, width = "40em") %>%
+  scroll_box(width = "100%", height = "225px")
+```
+
+```{r}
+# calculate overall IRT based on RT (time between consecutive retrievals)
+recall_data %<>%
+  mutate(IRT = case_when((output_position != 1) ~ rt - lag(rt)))
+
+recall_data %<>%
+  mutate(IRT = replace_na(IRT, 0)) %>%
+  select(subject:rt, IRT, PFR_SP1:PFR_SP10)
+
+#convert ms to s
+recall_data %<>%
+  mutate(IRT = IRT/1000)
+
+#convert ms to s
+recall_data %<>%
+  mutate(rt = rt/1000)
+```
+
+```{r}
+# there is no need to run this if you are rerunning code in the .Rmd file
+# I'm just making it easy to view data in html output
+recall_data %>%
+  kbl() %>%
+  kable_styling(bootstrap_options = c("condensed", "responsive"),
+                full_width = F) %>%
+  column_spec(1, bold = T, border_right = T) %>%
+  column_spec(2, width = "40em") %>%
+  scroll_box(width = "100%", height = "225px")
+```
+
+#### Visualize IRTs
+
+```{r}
+recall_data %>%
+  filter(output_position < 7) %>%
+  group_by(output_position) %>%
+  summarize(mean_IRT = mean(IRT, na.rm = TRUE),
+            se_IRT = se(IRT)) %>%
+  ggplot(aes(output_position, mean_IRT)) +
+  geom_point(colour = "#ADADFF", size = 2) +
+  geom_line(colour = "#ADADFF", linewidth = 1) +
+  geom_ribbon(aes(ymin = mean_IRT - se_IRT,
+                  ymax = mean_IRT + se_IRT),
+              fill = "#CCCCFF",
+              alpha = 0.7) +
+  theme_bw(base_size = 14) +
+  labs(y = "Mean Interresponse Time (s)",
+       x = "\nOutput Position") +
+  scale_x_continuous(breaks = c(0, 1, 2, 3, 4, 5, 6),
+                     labels = c("0", "1", "2", "3", "4", "5", "6")) +
+  scale_y_continuous(breaks = c(0, 1, 2, 3, 4, 5, 6),
+                     labels = c("0", "1", "2", "3", "4", "5", "6"),
+                     limits = c(.00, NA)) +
+  ashTheme
+```
+
+
+#### Visualize recall latency
+
+```{r}
+recall_data %>%
+  filter(output_position < 7) %>%
+  group_by(output_position) %>%
+  summarize(mean_rt = mean(rt, na.rm = TRUE),
+            se_rt = se(rt)) %>%
+  ggplot(aes(output_position, mean_rt)) +
+  geom_point(colour = "#6495ED", size = 2) +
+  geom_line(colour = "#6495ED", linewidth = 1) +
+  geom_ribbon(aes(ymin = mean_rt - se_rt,
+                  ymax = mean_rt + se_rt),
+              fill = "#7FA7F0",
+              alpha = 0.7) +
+  theme_bw(base_size = 14) +
+  labs(y = "Mean Recall Latency (s)",
+       x = "\nOutput Position") +
+  scale_x_continuous(breaks = c(0, 1, 2, 3, 4, 5, 6),
+                     labels = c("0", "1", "2", "3", "4", "5", "6")) +
+  scale_y_continuous(breaks = c(4, 6, 8, 10, 12, 14, 16, 18, 20),
+                     labels = c("4", "6", "8", "10", "12","14",
+                                "16", "18", "20"),
+                     limits = c(NA, NA)) +
+  ashTheme
+```
+
+
+#### Run the following if you need wide data aggregated across lists 
+
+```{r}
+rt_agg <- recall_data %>%
+  filter(output_position < 7) %>%
+  group_by(subject, output_position) %>%
+  summarize(mean_IRT = mean(IRT, na.rm = TRUE),
+            mean_recall_latency = mean(rt, na.rm = TRUE))
+```
+
+### Export data for whatever program you use to analyze data
+
+I will export a csv file as an example
+
+```{r}
+rio::export(recall_data, here::here("data",
+                                    "demo_recall_long.csv"))
 ```
 
