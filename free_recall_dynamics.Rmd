@@ -31,9 +31,52 @@ library(rio)
 library(here)
 library(magrittr)
 #library(lmerTest)
-#library(sundry)
+library(sundry)
 library(knitr)
 library(kableExtra)
+library(zoo)
+library(extrafont)
+
+# import fonts
+# font_import() # only run once
+
+# check fonts 
+fonts()
+
+# register fonts
+loadfonts(device = "all")
+```
+
+```{r}
+ashTheme <- theme(axis.title.y = element_text(size = 12.85,
+                                              family = ".SF NS Rounded",
+                                              face = "bold"),
+                  axis.title.x = element_text(size = 12.85,
+                                              face = "bold",
+                                              family = ".SF NS Rounded"),
+                  axis.text.y = element_text(size = 12,
+                                             face = "bold",
+                                             family = ".SF NS Rounded"),
+                  axis.text.x = element_text(size = 12, 
+                                             family = ".SF NS Rounded"),
+                  strip.text = element_text(face = "bold",
+                                            size = 13,
+                                            family = ".SF NS Rounded"),
+                  plot.title = element_text(size = 13.5,
+                                            hjust = 0.5, 
+                                            face = "bold",
+                                            family = ".SF NS Rounded"),
+                  plot.subtitle = element_text(hjust = 0.5,
+                                               size = 13,
+                                               family = ".SF NS Rounded"),
+                  plot.caption = element_text(hjust = 0.5, 
+                                              size = 12,
+                                              family = ".SF NS Rounded"),
+                  legend.title = element_text(size = 12,
+                                              face = "bold",
+                                              family = ".SF NS Rounded"),
+                  legend.text = element_text(size = 12,
+                                             family = ".SF NS Rounded"))
 ```
 
 ## Load data
@@ -46,7 +89,13 @@ recall_data <- import(here::here("data",
   dplyr::rename("error_type" = "err_pliel_ior_r")
 ```
 
-Take a quick look at the data (for html view). Note, `subtrial` is simply output position.
+Take a quick look at the data (for html view).
+
+Data file is currently in long format:
+  + Total number of rows 978
+    + Total number of participants: 33 (this is a subset of a larger dataset)
+    + Total number word lists: 5
+    + Total number of words per list: 10 (so serpos ranges from 1-10)
 
 ```{r}
 recall_data %>%
@@ -56,5 +105,156 @@ recall_data %>%
   column_spec(1, bold = T, border_right = T) %>%
   column_spec(2, width = "40em") %>%
   scroll_box(width = "100%", height = "225px")
+```
+
+# Tidy and clean data to compute `probability of first recall (PFR)`
+
+PFR is simply the number of times the first word recalled comes from a given serial position divided by the number of times the first recalled word could have come from that serial position.
+
+Note, `subtrial` is simply output position. However, this variable was added manually by the person who coded the data, meaning it could be prone to errors. When tidying the data, I will create a new variable, `output_position`, to replace the existing `subtrial` variable.
+
+## Step 1: Create variables that indicate when a change in list occurred (i.e, when a mismatch occurs between list and lag_list)
+
+```{r}
+
+recall_data %<>%
+  mutate(list_lag = lag(list)) %>%
+  select(subject, list, list_lag, subtrial, serpos, acc, error_type,
+         recall_onset_time, recall_rt_time)
+
+# replace missing value in first row with 0
+recall_data %<>%
+  mutate(list_lag = replace_na(list_lag, 0))
+
+recall_data %<>%
+  mutate(subtrial2 = case_when((list != list_lag) ~ 1)) %>%
+  select(subject, list, list_lag, subtrial2, subtrial, serpos, acc, error_type,
+         recall_onset_time, recall_rt_time)
+
+# replace missing value with 0
+recall_data %<>%
+  mutate(subtrial2 = replace_na(subtrial2, 0))
+```
+
+## Step 2: Now that we know when each new list began, we can count the number of words outputted within each list
+
+```{r}
+
+recall_data %<>%
+  group_by(subject, list) %>%
+  mutate(
+    # Cumulative sum of subtrial2, which effectively identifies each block
+    new_list = cumsum(subtrial2),
+      # Identify the start of a new block
+      output_position = ifelse(subtrial2 == 1, 1, NA),
+        output_position = 
+        # Propagate the starting value and add the counter
+        zoo::na.locf(output_position, 
+                     na.rm=FALSE) + 
+                     row_number() - match(output_position, output_position),
+    output_position = ifelse(subtrial2 == 1,
+                             output_position - 1, output_position)) %>%
+  ungroup() %>%
+  select(subject, list, list_lag, subtrial2, new_list, output_position, 
+         subtrial, serpos, acc, error_type, recall_onset_time, recall_rt_time)
+
+# I don't want each output position to begin with 0, so I will add 1 to each existing value
+# I will also drop the columns that are no longer needed
+recall_data %<>%
+  mutate(output_position = output_position + 1) %>%
+  select(-list_lag,
+         -new_list,
+         -subtrial2,
+         -subtrial)
+```
+
+# If you want data in wide format (aggregated across lists), you will need to do the following:
+
+```{r}
+recall_data %<>%
+   mutate(PFR_SP1 = case_when((output_position == 1 & serpos == 1) ~ 1,
+                              (output_position == 1 & serpos != 1) ~ 0),
+          PFR_SP2 = case_when((output_position == 1 & serpos == 2) ~ 1,
+                              (output_position == 1 & serpos != 2) ~ 0),
+          PFR_SP3 = case_when((output_position == 1 & serpos == 3) ~ 1,
+                              (output_position == 1 & serpos != 3) ~ 0),
+          PFR_SP4 = case_when((output_position == 1 & serpos == 4) ~ 1,
+                              (output_position == 1 & serpos != 4) ~ 0),
+          PFR_SP5 = case_when((output_position == 1 & serpos == 5) ~ 1,
+                              (output_position == 1 & serpos != 5) ~ 0),
+          PFR_SP6 = case_when((output_position == 1 & serpos == 6) ~ 1,
+                              (output_position == 1 & serpos != 6) ~ 0),
+          PFR_SP7 = case_when((output_position == 1 & serpos == 7) ~ 1,
+                              (output_position == 1 & serpos != 7) ~ 0),
+          PFR_SP8 = case_when((output_position == 1 & serpos == 8) ~ 1,
+                              (output_position == 1 & serpos != 8) ~ 0),
+          PFR_SP9 = case_when((output_position == 1 & serpos == 9) ~ 1,
+                              (output_position == 1 & serpos != 9) ~ 0),
+         PFR_SP10 = case_when((output_position == 1 & serpos == 10) ~ 1,
+                              (output_position == 1 & serpos != 10) ~ 0))
+```
+
+```{r}
+PFR <- recall_data %>%
+  filter(output_position == 1) %>%
+  group_by(subject) %>%
+  summarize(PFR_SP1_sum = sum(PFR_SP1),
+            PFR_SP2_sum = sum(PFR_SP2),
+            PFR_SP3_sum = sum(PFR_SP3),
+            PFR_SP4_sum = sum(PFR_SP4),
+            PFR_SP5_sum = sum(PFR_SP5),
+            PFR_SP6_sum = sum(PFR_SP6),
+            PFR_SP7_sum = sum(PFR_SP7),
+            PFR_SP8_sum = sum(PFR_SP8),
+            PFR_SP9_sum = sum(PFR_SP9),
+            PFR_SP10_sum = sum(PFR_SP10))
+
+# this is the format  your data needs to be in to run analyses in SPSS
+PFR %<>%
+  mutate(SP1_PFR = PFR_SP1_sum/5,
+         SP2_PFR = PFR_SP2_sum/5,
+         SP3_PFR = PFR_SP3_sum/5,
+         SP4_PFR = PFR_SP4_sum/5,
+         SP5_PFR = PFR_SP5_sum/5,
+         SP6_PFR = PFR_SP6_sum/5,
+         SP7_PFR = PFR_SP7_sum/5,
+         SP8_PFR = PFR_SP8_sum/5,
+         SP9_PFR = PFR_SP9_sum/5,
+         SP10_PFR = PFR_SP10_sum/5) %>%
+  select(-ends_with("_sum"))
+
+PFR_agg <- PFR %>%
+  gather(key = serpos, value = PFR, SP1_PFR:SP10_PFR) %>%
+  mutate(serpos = parse_number(serpos)) %>%
+  arrange(subject, serpos)
+
+#removing widest form of the data
+rm(PFR)
+
+```
+
+```{r}
+PFR_agg %>%
+  group_by(serpos) %>%
+  summarize(mean_PFR = mean(PFR, na.rm = TRUE),
+            se_PFR = se(PFR)) %>%
+  ggplot(aes(serpos, mean_PFR)) +
+  geom_point(colour = "#D32254", size = 2) +
+  geom_line(colour = "#D32254", linewidth = 1) +
+  geom_ribbon(aes(ymin = mean_PFR - se_PFR,
+                  ymax = mean_PFR + se_PFR),
+              fill = "#DE3163",
+              alpha = 0.7) +
+  theme_bw(base_size = 12) +
+  labs(y = "Probability of First Recall",
+       x = "\nSerial Position") +
+  scale_x_continuous(breaks = c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10),
+                     labels = c("1", "2", "3", "4", "5", 
+                                "6", "7", "8", "9", "10")) +
+  scale_y_continuous(breaks = c(0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6),
+                     labels = c(".00", ".10", ".20", ".30", 
+                                ".40", ".50", ".60"),
+                     limits = c(.00, NA)) +
+  ashTheme
 ```
 

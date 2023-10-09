@@ -419,7 +419,7 @@ prone to errors; safest to create new vars
 *******************************************************
 *******************************************************
 
-* create vars that indicate when change in list occured
+* create vars that indicate when change in list occurred
     (i.e, when a mismatch occurs between list and list2)
 
 compute list2 = lag(list).
